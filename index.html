@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TCP vs UDP Coin Grab</title>
+<style>
+:root{--bg:#252629;--text:#fff;--muted:rgba(255,255,255,.62);--tcp:#00f39f;--udp:#f7ff57;--coral:#fa7272;--red:#ff5757;--cyan:#57e1ff;--r:24px;
+  --glass:rgba(255,255,255,.06);--edge:rgba(255,255,255,.1);--ease:cubic-bezier(.2,.9,.3,1)}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--text);font:100%/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Display",Inter,system-ui,sans-serif;font-optical-sizing:auto;min-height:100vh;overflow-x:hidden}
+.blob{position:fixed;width:44vmax;height:44vmax;border-radius:50%;filter:blur(120px);opacity:.2;z-index:0;pointer-events:none}
+.b1{background:var(--coral);top:-14vmax;left:-12vmax}.b2{background:var(--tcp);top:24vmax;right:-16vmax;opacity:.14}.b3{background:var(--udp);bottom:-20vmax;left:28vw;opacity:.1}
+main{position:relative;z-index:1;max-width:77rem;margin:0 auto;padding:2rem 1.25rem 3rem}
+header{margin-bottom:1.5rem}
+h1{font-weight:300;font-size:clamp(2rem,5vw,3.25rem);line-height:1.05;letter-spacing:-.02em}
+.legend{display:flex;gap:1.25rem;margin-top:.5rem;color:var(--muted);font-size:.875rem}
+.legend i{display:inline-block;width:.5rem;height:.5rem;border-radius:50%;margin-right:.45rem}
+.grid{display:grid;gap:1rem;grid-template-columns:repeat(4,1fr);
+  grid-template-areas:"arena arena arena score" "arena arena arena mode" "arena arena arena net" "stats log log chat"}
+.card{background:var(--glass);backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);
+  border:1px solid var(--edge);border-top-color:rgba(255,255,255,.28);border-radius:var(--r);padding:1.5rem;
+  box-shadow:0 10px 30px rgba(0,0,0,.22);min-width:0}
+#arenaCard{grid-area:arena;backdrop-filter:blur(32px) saturate(160%);-webkit-backdrop-filter:blur(32px) saturate(160%);box-shadow:0 24px 60px rgba(0,0,0,.32)}
+#scoreCard{grid-area:score}#modeCard{grid-area:mode}#netCard{grid-area:net}#statsCard{grid-area:stats}#logCard{grid-area:log}#chatCard{grid-area:chat}
+h2{font-size:.6875rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem}
+h2 small{font-weight:500;letter-spacing:.06em;margin-left:.4rem;color:var(--coral)}
+canvas{display:block;width:100%;height:auto;border-radius:16px;background:rgba(0,0,0,.2)}
+.hint{color:var(--muted);font-size:.8125rem;margin-top:.75rem}
+input[type=text]{width:100%;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.08);border-radius:12px;color:var(--text);padding:.6rem .8rem;font:inherit;outline:0;transition:border-color .2s}
+input[type=text]:focus{border-color:rgba(255,255,255,.4)}
+input::placeholder{color:rgba(255,255,255,.4)}
+#score{list-style:none;padding:0;margin-top:1rem}
+#score li{display:flex;align-items:center;gap:.7rem;padding:.4rem 0;font-variant-numeric:tabular-nums}
+#score .dot{width:.65rem;height:.65rem;border-radius:4px}
+#score .n{margin-left:auto;font-size:1.5rem;font-weight:300;letter-spacing:-.01em}
+.seg{position:relative;display:grid;grid-template-columns:1fr 1fr;background:rgba(0,0,0,.2);border-radius:999px;padding:4px}
+.thumb{position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:999px;background:var(--udp);transition:transform .32s var(--ease),background-color .32s var(--ease)}
+.seg[data-mode=tcp] .thumb{transform:translateX(100%);background:var(--tcp)}
+.seg button{position:relative;z-index:1;border:0;background:none;color:var(--muted);padding:.6rem 0;border-radius:999px;font:inherit;font-weight:600;cursor:pointer;transition:color .2s,transform .1s ease-out}
+.seg button.on{color:#15160a}
+.seg button:active{transform:scale(.97)}
+button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.sl{margin-bottom:1rem}
+.sl label{display:flex;justify-content:space-between;font-size:.8125rem;color:var(--muted);margin-bottom:.6rem}
+.sl b{color:var(--text);font-weight:500;font-variant-numeric:tabular-nums}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:4px;outline:0;--p:0%;
+  background:linear-gradient(to right,var(--c) var(--p),rgba(255,255,255,.16) var(--p))}
+input[type=range].u{--c:var(--udp)}input[type=range].t{--c:var(--tcp)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:1.125rem;height:1.125rem;border-radius:50%;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.4);cursor:pointer;transition:transform .1s ease-out}
+input[type=range]::-moz-range-thumb{width:1.125rem;height:1.125rem;border:0;border-radius:50%;background:#fff;cursor:pointer}
+input[type=range]:active::-webkit-slider-thumb{transform:scale(1.12)}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:1rem 1.25rem;margin-bottom:1rem}
+.metrics b{display:block;font-size:1.75rem;font-weight:300;line-height:1.1;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.metrics span,.rows span:first-child{color:var(--muted);font-size:.6875rem;letter-spacing:.08em;text-transform:uppercase}
+.rows>div{display:flex;justify-content:space-between;align-items:center;padding:.3rem 0;font-size:.875rem;font-variant-numeric:tabular-nums}
+.tcp{color:var(--tcp)}.udp{color:var(--udp)}
+#log,#chatLog{height:12rem;overflow:auto;padding:.9rem 0;font:.75rem/1.7 ui-monospace,SFMono-Regular,Menlo,monospace;
+  -webkit-mask-image:linear-gradient(to bottom,transparent,#000 .9rem,#000 calc(100% - .9rem),transparent);mask-image:linear-gradient(to bottom,transparent,#000 .9rem,#000 calc(100% - .9rem),transparent)}
+#log div,#chatLog div{animation:in .2s ease-out}
+#chatLog{font-family:inherit;font-size:.875rem;line-height:1.5;height:9.5rem;margin-bottom:.5rem}
+@keyframes in{from{opacity:0}}
+.tag{display:inline-block;min-width:2.4rem;text-align:center;border-radius:6px;padding:0 .4rem;margin-right:.6rem;font-size:.6875rem;font-weight:700;letter-spacing:.04em;color:#101214}
+.tag.tcp{background:var(--tcp)}.tag.udp{background:var(--udp)}
+@media (max-width:900px){.grid{grid-template-columns:1fr;grid-template-areas:"arena" "score" "mode" "net" "stats" "log" "chat"}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition-duration:.01ms!important}}
+@media (prefers-reduced-transparency:reduce){.card{background:#303236;backdrop-filter:none;-webkit-backdrop-filter:none}}
+@media (prefers-contrast:more){.card{background:#303236;border-color:rgba(255,255,255,.6)}:root{--muted:rgba(255,255,255,.85)}}
+</style>
+</head>
+<body>
+<div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+<main>
+  <header><h1>Coin Grab</h1><div class="legend"><span><i style="background:var(--tcp)"></i>TCP: reliable events</span><span><i style="background:var(--udp)"></i>UDP: fast positions</span></div></header>
+  <div class="grid">
+    <section class="card" id="arenaCard">
+      <h2>Arena</h2>
+      <canvas id="cv" width="800" height="500"></canvas>
+      <p class="hint">Arrow keys or WASD to move. Dashed outline: where the server last saw you.</p>
+    </section>
+
+    <section class="card" id="scoreCard">
+      <h2>Scoreboard</h2>
+      <input type="text" id="nick" maxlength="16" aria-label="Nickname">
+      <ul id="score"></ul>
+    </section>
+
+    <section class="card" id="modeCard">
+      <h2>Position transport</h2>
+      <div class="seg" id="seg" data-mode="udp"><span class="thumb"></span><button data-m="udp" class="on">UDP</button><button data-m="tcp">TCP</button></div>
+    </section>
+
+    <section class="card" id="netCard">
+      <h2>Network conditions<small>SIMULATED</small></h2>
+      <div class="sl"><label>UDP loss <b id="vLoss">0%</b></label><input type="range" id="loss" class="u" min="0" max="50" value="0"></div>
+      <div class="sl"><label>UDP delay <b id="vUdp">0 ms</b></label><input type="range" id="udpd" class="u" min="0" max="500" value="0"></div>
+      <div class="sl"><label>TCP delay <b id="vTcp">0 ms</b></label><input type="range" id="tcpd" class="t" min="0" max="500" value="0"></div>
+      <p class="hint" style="margin-top:0">Applied in the bridge. Not real network loss.</p>
+    </section>
+
+    <section class="card" id="statsCard">
+      <h2>Live stats</h2>
+      <div class="metrics">
+        <div><b class="udp" id="sPps">0</b><span>UDP pkts/s</span></div>
+        <div><b class="udp" id="sLoss">0%</b><span>Loss (sim)</span></div>
+        <div><b class="udp" id="sOoo">0</b><span>Out of order</span></div>
+        <div><b class="tcp" id="sRtt">-</b><span>TCP RTT</span></div>
+      </div>
+      <div class="rows">
+        <div><span>Mode</span><span id="sMode">-</span></div>
+        <div><span>Sent over TCP</span><span class="tcp" id="sTcp">0</span></div>
+        <div><span>Sent over UDP</span><span class="udp" id="sUdp">0</span></div>
+      </div>
+    </section>
+
+    <section class="card" id="logCard"><h2>Event log</h2><div id="log"></div></section>
+
+    <section class="card" id="chatCard">
+      <h2>Chat (TCP)</h2>
+      <div id="chatLog"></div>
+      <input type="text" id="chatIn" maxlength="200" placeholder="Say something, press Enter" aria-label="Chat message">
+    </section>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const COLORS = ["#fa7272", "#00f39f", "#57e1ff", "#ff5757", "#ffffff", "#f7ff57"];
+const col = id => COLORS[(id - 1) % COLORS.length];
+const send = m => ws.readyState === 1 && ws.send(JSON.stringify(m));
+
+let myId = null, mode = "udp", coin = null, serverMe = null, seenVia = null, lastOoo = 0;
+const me = {x: 400, y: 250}, others = {}, meta = {}, scores = {}, keys = new Set();
+$("nick").value = "player" + Math.floor(Math.random() * 900 + 100);
+
+const ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws");
+ws.onopen = () => send({t: "join", nick: $("nick").value});
+ws.onclose = () => log("tcp", "connection to bridge closed");
+
+// ---------- log / chat helpers (textContent only, so chat text cannot inject HTML) ----------
+function log(proto, text) {
+  const d = document.createElement("div"), tag = document.createElement("span");
+  tag.className = "tag " + proto; tag.textContent = proto.toUpperCase();
+  d.append(tag, text);
+  const box = $("log"); box.append(d);
+  while (box.children.length > 200) box.firstChild.remove();
+  box.scrollTop = box.scrollHeight;
+}
+function chatLine(nick, text) {
+  const d = document.createElement("div"), b = document.createElement("b");
+  b.textContent = nick + ": "; d.append(b, text);
+  $("chatLog").append(d); $("chatLog").scrollTop = $("chatLog").scrollHeight;
+}
+function renderScores() {
+  const ul = $("score"); ul.innerHTML = "";
+  Object.keys(meta).sort((a, b) => (scores[b] || 0) - (scores[a] || 0)).forEach(id => {
+    const li = document.createElement("li"), dot = document.createElement("span"), name = document.createElement("span"), n = document.createElement("span");
+    dot.className = "dot"; dot.style.background = col(+id);
+    name.textContent = meta[id] + (+id === myId ? " (you)" : "");
+    n.className = "n"; n.textContent = scores[id] || 0;
+    li.append(dot, name, n); ul.append(li);
+  });
+}
+
+// ---------- messages from the bridge ----------
+ws.onmessage = ev => {
+  const m = JSON.parse(ev.data);
+  if (m.t === "world") {
+    if (m.via !== seenVia) { seenVia = m.via; log(m.via, "world updates now arriving over " + m.via.toUpperCase()); }
+    coin = m.coin;
+    const ids = new Set(m.players.map(p => p.id));
+    m.players.forEach(p => {
+      if (p.id === myId) { serverMe = p; return; }
+      const o = others[p.id] || (others[p.id] = {x: p.x, y: p.y});
+      o.tx = p.x; o.ty = p.y;
+    });
+    Object.keys(others).forEach(id => ids.has(+id) || delete others[id]);
+  } else if (m.t === "welcome") {
+    myId = m.id; coin = m.coin; log("tcp", "welcome, you are #" + m.id);
+  } else if (m.t === "lobby") {
+    Object.keys(meta).forEach(k => delete meta[k]);
+    m.players.forEach(p => { meta[p.id] = p.nick; scores[p.id] = p.score; });
+    renderScores();
+  } else if (m.t === "joined") log("tcp", m.nick + " joined");
+  else if (m.t === "left") log("tcp", m.nick + " left");
+  else if (m.t === "chat") { chatLine(m.nick, m.text); log("tcp", "chat from " + m.nick); }
+  else if (m.t === "coin_collected") {
+    coin = m.coin; Object.assign(scores, m.scores); renderScores();
+    log("tcp", m.nick + " collected the coin");
+  } else if (m.t === "stats") showStats(m);
+};
+
+function showStats(s) {
+  $("sMode").textContent = s.mode.toUpperCase(); $("sMode").className = s.mode;
+  $("sPps").textContent = s.udp_pps; $("sLoss").textContent = s.loss_pct + "%"; $("sOoo").textContent = s.ooo;
+  $("sRtt").textContent = s.rtt_ms === null ? "-" : s.rtt_ms + " ms";
+  $("sTcp").textContent = s.tcp_sent; $("sUdp").textContent = s.udp_sent;
+  if (s.lost > 0) log("udp", s.lost + " datagram(s) missing this second (sequence gaps)");
+  if (s.ooo > lastOoo) log("udp", (s.ooo - lastOoo) + " datagram(s) arrived out of order");
+  lastOoo = s.ooo;
+}
+
+// ---------- controls ----------
+document.querySelectorAll(".seg button").forEach(b => b.onclick = () => {
+  mode = b.dataset.m; seenVia = null;
+  document.querySelectorAll(".seg button").forEach(x => x.classList.toggle("on", x === b));
+  $("seg").dataset.mode = mode;
+  send({t: "mode", mode}); log(mode, "positions now sent over " + mode.toUpperCase());
+});
+function fill(el) { el.style.setProperty("--p", (el.value - el.min) / (el.max - el.min) * 100 + "%"); }
+function sendImpair() {
+  ["loss", "udpd", "tcpd"].forEach(id => fill($(id)));
+  $("vLoss").textContent = $("loss").value + "%";
+  $("vUdp").textContent = $("udpd").value + " ms"; $("vTcp").textContent = $("tcpd").value + " ms";
+  send({t: "impair", loss: +$("loss").value, udp_delay: +$("udpd").value, tcp_delay: +$("tcpd").value});
+}
+["loss", "udpd", "tcpd"].forEach(id => $(id).oninput = sendImpair);
+$("nick").onchange = () => send({t: "nick", nick: $("nick").value});
+$("chatIn").onkeydown = e => { if (e.key === "Enter" && e.target.value.trim()) { send({t: "chat", text: e.target.value}); e.target.value = ""; } };
+
+const KEYMAP = {ArrowLeft: "l", a: "l", ArrowRight: "r", d: "r", ArrowUp: "u", w: "u", ArrowDown: "d", s: "d"};
+addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT" || !(e.key in KEYMAP)) return;
+  keys.add(KEYMAP[e.key]); e.preventDefault();
+});
+addEventListener("keyup", e => { if (e.key in KEYMAP) keys.delete(KEYMAP[e.key]); });
+
+// positions go to the server at 20 Hz; the bridge picks UDP or TCP from the mode
+setInterval(() => myId && send({t: "pos", x: me.x, y: me.y}), 50);
+
+// ---------- canvas ----------
+const cv = $("cv"), g = cv.getContext("2d"), SIZE = 28, SPEED = 260;
+let prev = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - prev) / 1000); prev = now;
+  me.x += ((keys.has("r") ? 1 : 0) - (keys.has("l") ? 1 : 0)) * SPEED * dt;
+  me.y += ((keys.has("d") ? 1 : 0) - (keys.has("u") ? 1 : 0)) * SPEED * dt;
+  me.x = Math.max(0, Math.min(800, me.x)); me.y = Math.max(0, Math.min(500, me.y));
+
+  g.clearRect(0, 0, 800, 500);
+  g.strokeStyle = "rgba(255,255,255,.04)"; g.lineWidth = 1;
+  for (let x = 0; x <= 800; x += 50) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 500); g.stroke(); }
+  for (let y = 0; y <= 500; y += 50) { g.beginPath(); g.moveTo(0, y); g.lineTo(800, y); g.stroke(); }
+  if (coin) {
+    g.shadowColor = "#f7ff57"; g.shadowBlur = 18; g.fillStyle = "#f7ff57";
+    g.beginPath(); g.arc(coin.x, coin.y, 10, 0, 7); g.fill(); g.shadowBlur = 0;
+  }
+  for (const id in others) {  // light smoothing so jitter and lag are visible but not painful
+    const o = others[id]; o.x += (o.tx - o.x) * 0.35; o.y += (o.ty - o.y) * 0.35;
+    square(o.x, o.y, col(+id), meta[id]);
+  }
+  if (serverMe) {  // where the server thinks we are
+    g.setLineDash([4, 4]); g.strokeStyle = "rgba(255,255,255,.6)"; g.strokeRect(serverMe.x - SIZE / 2, serverMe.y - SIZE / 2, SIZE, SIZE); g.setLineDash([]);
+  }
+  if (myId) { square(me.x, me.y, col(myId), meta[myId]); g.strokeStyle = "#fff"; g.lineWidth = 2; g.beginPath(); g.roundRect(me.x - SIZE / 2, me.y - SIZE / 2, SIZE, SIZE, 7); g.stroke(); g.lineWidth = 1; }
+  requestAnimationFrame(frame);
+}
+function square(x, y, color, name) {
+  g.fillStyle = color; g.beginPath(); g.roundRect(x - SIZE / 2, y - SIZE / 2, SIZE, SIZE, 7); g.fill();
+  g.fillStyle = "rgba(255,255,255,.8)"; g.font = "11px system-ui"; g.textAlign = "center";
+  g.fillText(name || "", x, y - SIZE / 2 - 6);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
