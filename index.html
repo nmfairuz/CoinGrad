@@ -3,11 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#252629">
 <title>TCP vs UDP Coin Grab</title>
 <style>
-:root{--bg:#252629;--text:#fff;--muted:rgba(255,255,255,.62);--tcp:#00f39f;--udp:#f7ff57;--coral:#fa7272;--red:#ff5757;--cyan:#57e1ff;--r:24px;
+:root{--bg:#252629;--text:#fff;--muted:rgba(255,255,255,.62);--tcp:#00f39f;--udp:#f7ff57;--coral:#fa7272;--red:#ff5757;--r:24px;
   --glass:rgba(255,255,255,.06);--edge:rgba(255,255,255,.1);--ease:cubic-bezier(.2,.9,.3,1)}
 *{box-sizing:border-box;margin:0}
+[hidden]{display:none!important}
 body{background:var(--bg);color:var(--text);font:100%/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Display",Inter,system-ui,sans-serif;font-optical-sizing:auto;min-height:100vh;overflow-x:hidden}
 .blob{position:fixed;width:44vmax;height:44vmax;border-radius:50%;filter:blur(120px);opacity:.2;z-index:0;pointer-events:none}
 .b1{background:var(--coral);top:-14vmax;left:-12vmax}.b2{background:var(--tcp);top:24vmax;right:-16vmax;opacity:.14}.b3{background:var(--udp);bottom:-20vmax;left:28vw;opacity:.1}
@@ -25,14 +27,17 @@ h1{font-weight:300;font-size:clamp(2rem,5vw,3.25rem);line-height:1.05;letter-spa
 #scoreCard{grid-area:score}#modeCard{grid-area:mode}#netCard{grid-area:net}#statsCard{grid-area:stats}#logCard{grid-area:log}#chatCard{grid-area:chat}
 h2{font-size:.6875rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem}
 h2 small{font-weight:500;letter-spacing:.06em;margin-left:.4rem;color:var(--coral)}
-canvas{display:block;width:100%;height:auto;border-radius:16px;background:rgba(0,0,0,.2)}
+canvas{display:block;width:100%;height:auto;border-radius:16px;background:rgba(0,0,0,.2);touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 .hint{color:var(--muted);font-size:.8125rem;margin-top:.75rem}
 input[type=text]{width:100%;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.08);border-radius:12px;color:var(--text);padding:.6rem .8rem;font:inherit;outline:0;transition:border-color .2s}
 input[type=text]:focus{border-color:rgba(255,255,255,.4)}
 input::placeholder{color:rgba(255,255,255,.4)}
-#score{list-style:none;padding:0;margin-top:1rem}
-#score li{display:flex;align-items:center;gap:.7rem;padding:.4rem 0;font-variant-numeric:tabular-nums}
-#score .dot{width:.65rem;height:.65rem;border-radius:4px}
+.row{display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem}
+.ghost{border:1px solid var(--edge);background:rgba(0,0,0,.15);color:var(--text);border-radius:999px;padding:.35rem .85rem;font:inherit;font-size:.8125rem;cursor:pointer;transition:transform .1s ease-out,background-color .2s}
+.ghost:hover{background:rgba(255,255,255,.1)}.ghost:active{transform:scale(.97)}
+#score{list-style:none;padding:0}
+#score li{display:flex;align-items:center;gap:.7rem;padding:.3rem 0;font-variant-numeric:tabular-nums}
+.av{width:2rem;height:2rem;border-radius:50%;display:grid;place-items:center;flex:none}.av svg{width:1.55rem;height:1.55rem}
 #score .n{margin-left:auto;font-size:1.5rem;font-weight:300;letter-spacing:-.01em}
 .seg{position:relative;display:grid;grid-template-columns:1fr 1fr;background:rgba(0,0,0,.2);border-radius:999px;padding:4px}
 .thumb{position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:999px;background:var(--udp);transition:transform .32s var(--ease),background-color .32s var(--ease)}
@@ -62,6 +67,20 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.12)}
 @keyframes in{from{opacity:0}}
 .tag{display:inline-block;min-width:2.4rem;text-align:center;border-radius:6px;padding:0 .4rem;margin-right:.6rem;font-size:.6875rem;font-weight:700;letter-spacing:.04em;color:#101214}
 .tag.tcp{background:var(--tcp)}.tag.udp{background:var(--udp)}
+/* character picker (popup) */
+.modal{position:fixed;inset:0;z-index:10;display:grid;place-items:center;padding:1rem;background:rgba(37,38,41,.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.sheet{width:min(40rem,100%);max-height:calc(100dvh - 2rem);overflow:auto;backdrop-filter:blur(32px) saturate(160%);-webkit-backdrop-filter:blur(32px) saturate(160%);background:rgba(48,49,52,.72);box-shadow:0 24px 60px rgba(0,0,0,.4)}
+.sheet h1{font-size:clamp(1.5rem,4vw,2rem);margin-bottom:1rem}
+.pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(5.2rem,1fr));gap:.6rem;margin:1rem 0 1.25rem}
+.opt{display:flex;flex-direction:column;align-items:center;gap:.3rem;padding:.65rem .25rem;border-radius:16px;border:1px solid transparent;background:rgba(0,0,0,.18);color:var(--muted);font:inherit;font-size:.8125rem;cursor:pointer;transition:background-color .2s,border-color .2s,color .2s,transform .1s ease-out}
+.opt:hover{background:rgba(255,255,255,.08)}.opt:active{transform:scale(.97)}
+.opt[aria-checked=true]{background:rgba(255,255,255,.13);border-color:rgba(255,255,255,.55);color:#fff}
+.opt svg{width:3.25rem;height:3.25rem;display:block}
+.primary{width:100%;border:0;border-radius:999px;padding:.85rem;font:inherit;font-weight:600;background:#fff;color:#15160a;cursor:pointer;transition:transform .1s ease-out}
+.primary:active{transform:scale(.98)}
+.primary{position:sticky;bottom:0;box-shadow:0 0 0 .6rem rgba(48,49,52,.85)}
+@media (pointer:coarse){input[type=text]{font-size:1rem}.seg button{padding:.8rem 0}}
+@media (max-width:600px){main{padding:1rem .75rem 2rem}.card{padding:1rem;border-radius:20px}.pick{grid-template-columns:repeat(auto-fill,minmax(4.2rem,1fr));gap:.4rem}.opt svg{width:2.8rem;height:2.8rem}.opt{font-size:.75rem}}
 @media (max-width:900px){.grid{grid-template-columns:1fr;grid-template-areas:"arena" "score" "mode" "net" "stats" "log" "chat"}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition-duration:.01ms!important}}
 @media (prefers-reduced-transparency:reduce){.card{background:#303236;backdrop-filter:none;-webkit-backdrop-filter:none}}
@@ -80,8 +99,7 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.12)}
     </section>
 
     <section class="card" id="scoreCard">
-      <h2>Scoreboard</h2>
-      <input type="text" id="nick" maxlength="16" aria-label="Nickname">
+      <div class="row"><h2>Scoreboard</h2><button class="ghost" id="changeBtn">Change character</button></div>
       <ul id="score"></ul>
     </section>
 
@@ -123,19 +141,139 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.12)}
   </div>
 </main>
 
+<!-- Shown first: the player picks a character and nickname, and only then joins -->
+<div class="modal" id="picker" role="dialog" aria-modal="true" aria-labelledby="pTitle">
+  <div class="card sheet">
+    <h1 id="pTitle">Choose your character</h1>
+    <input type="text" id="nick" maxlength="16" aria-label="Nickname" placeholder="Nickname">
+    <div class="pick" id="pickGrid" role="radiogroup" aria-label="Character"></div>
+    <button class="primary" id="startBtn">Start</button>
+  </div>
+</div>
+
 <script>
 const $ = id => document.getElementById(id);
-const COLORS = ["#fa7272", "#00f39f", "#57e1ff", "#ff5757", "#ffffff", "#f7ff57"];
+const COLORS = ["#fa7272", "#00f39f", "#f7ff57", "#ff5757", "#ffffff", "#ffb3b3", "#a8ffd9", "#fbffa8"];  // glow colour per player (no blue)
 const col = id => COLORS[(id - 1) % COLORS.length];
-const send = m => ws.readyState === 1 && ws.send(JSON.stringify(m));
 
-let myId = null, mode = "udp", coin = null, serverMe = null, seenVia = null, lastOoo = 0;
-const me = {x: 400, y: 250}, others = {}, meta = {}, scores = {}, keys = new Set();
+// ---------- characters: flat SVG heads on a 64x64 grid ----------
+const INK = "#26272b";
+// faint round badge behind every icon so dark parts (panda ears, penguin) stay visible on the dark UI
+const svg = body => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="31" fill="#fff" opacity=".14"/>${body}</svg>`;
+const eyes = (y, dx = 8, r = 2.4) => `<circle cx="${32 - dx}" cy="${y}" r="${r}" fill="${INK}"/><circle cx="${32 + dx}" cy="${y}" r="${r}" fill="${INK}"/>`;
+const mane = Array.from({length: 12}, (_, i) => { const a = i * Math.PI / 6; return `<circle cx="${(32 + 22 * Math.cos(a)).toFixed(1)}" cy="${(33 + 22 * Math.sin(a)).toFixed(1)}" r="8"/>`; }).join("");
+const ANIMALS = {
+  fox: ["Fox", `<path d="M32 58 L12 40 L8 10 L24 24 L40 24 L56 10 L52 40 Z" fill="#ff7a45"/>
+    <path d="M8 10 L11 21 L18 22 Z M56 10 L53 21 L46 22 Z" fill="${INK}"/>
+    <path d="M32 58 L12 40 L23 38 L32 44 L41 38 L52 40 Z" fill="#fff4ea"/>
+    ${eyes(33, 9, 2.3)}<circle cx="32" cy="56" r="3.2" fill="${INK}"/>`],
+  wolf: ["Wolf", `<path d="M32 58 L14 46 L10 26 L12 6 L26 20 L38 20 L52 6 L54 26 L50 46 Z" fill="#8d939c"/>
+    <path d="M32 58 L19 46 L24 36 L40 36 L45 46 Z" fill="#d9dce0"/>
+    <circle cx="23" cy="30" r="3.4" fill="#f7ff57"/><circle cx="41" cy="30" r="3.4" fill="#f7ff57"/>
+    <circle cx="23" cy="30" r="1.5" fill="${INK}"/><circle cx="41" cy="30" r="1.5" fill="${INK}"/>
+    <ellipse cx="32" cy="53" rx="4.2" ry="3" fill="${INK}"/>`],
+  raccoon: ["Raccoon", `<circle cx="17" cy="19" r="7.5" fill="#9ea2a9"/><circle cx="47" cy="19" r="7.5" fill="#9ea2a9"/>
+    <circle cx="17" cy="19" r="3.5" fill="#4a4c52"/><circle cx="47" cy="19" r="3.5" fill="#4a4c52"/>
+    <ellipse cx="32" cy="38" rx="21" ry="18" fill="#b4b8bf"/>
+    <path d="M32 21 L27 31 L37 31 Z" fill="#eceef1"/>
+    <path d="M12 35 C18 27 46 27 52 35 C50 45 40 42 32 40 C24 42 14 45 12 35 Z" fill="#2c2d32"/>
+    <circle cx="23" cy="35" r="3" fill="#fff"/><circle cx="41" cy="35" r="3" fill="#fff"/>
+    <circle cx="23" cy="35" r="1.3" fill="${INK}"/><circle cx="41" cy="35" r="1.3" fill="${INK}"/>
+    <ellipse cx="32" cy="49" rx="10" ry="6.5" fill="#f1f2f4"/><ellipse cx="32" cy="45" rx="3.8" ry="2.6" fill="${INK}"/>`],
+  deer: ["Deer", `<g fill="none" stroke="#e8d8b8" stroke-width="3" stroke-linecap="round">
+    <path d="M25 25 C22 16 20 11 18 5 M21 15 L13 12 M19.5 10 L23 5"/><path d="M39 25 C42 16 44 11 46 5 M43 15 L51 12 M44.5 10 L41 5"/></g>
+    <ellipse cx="14" cy="31" rx="8" ry="4.5" transform="rotate(-25 14 31)" fill="#c98f55"/><ellipse cx="50" cy="31" rx="8" ry="4.5" transform="rotate(25 50 31)" fill="#c98f55"/>
+    <ellipse cx="32" cy="40" rx="15" ry="18" fill="#d9a066"/>
+    <ellipse cx="32" cy="51" rx="9" ry="7" fill="#f2d6ae"/><ellipse cx="32" cy="54" rx="3.8" ry="2.6" fill="${INK}"/>
+    ${eyes(38, 8, 2.4)}<circle cx="28" cy="29" r="1.3" fill="#fff" opacity=".8"/><circle cx="36" cy="29" r="1.3" fill="#fff" opacity=".8"/>`],
+  penguin: ["Penguin", `<circle cx="32" cy="34" r="21" fill="#2d2e33"/>
+    <circle cx="25" cy="35" r="10.5" fill="#f6f6f8"/><circle cx="39" cy="35" r="10.5" fill="#f6f6f8"/><ellipse cx="32" cy="43" rx="12" ry="9" fill="#f6f6f8"/>
+    ${eyes(34, 7, 2.4)}<path d="M26.5 41 L37.5 41 L32 49.5 Z" fill="#ffa43a"/>`],
+  rabbit: ["Rabbit", `<ellipse cx="23" cy="17" rx="6.5" ry="15" transform="rotate(-8 23 17)" fill="#f4f4f6"/><ellipse cx="41" cy="17" rx="6.5" ry="15" transform="rotate(8 41 17)" fill="#f4f4f6"/>
+    <ellipse cx="23" cy="18" rx="3" ry="10" transform="rotate(-8 23 18)" fill="#fa7272"/><ellipse cx="41" cy="18" rx="3" ry="10" transform="rotate(8 41 18)" fill="#fa7272"/>
+    <ellipse cx="32" cy="42" rx="19" ry="16" fill="#f4f4f6"/>
+    <circle cx="21" cy="47" r="3.6" fill="#fa7272" opacity=".35"/><circle cx="43" cy="47" r="3.6" fill="#fa7272" opacity=".35"/>
+    ${eyes(40, 9, 2.4)}<ellipse cx="32" cy="45" rx="2.8" ry="2.1" fill="#fa7272"/>
+    <path d="M32 47 V49.5 M28.5 50.5 Q32 53 32 49.5 Q32 53 35.5 50.5" fill="none" stroke="${INK}" stroke-width="1.5" stroke-linecap="round"/>`],
+  tortoise: ["Tortoise", `<circle cx="56" cy="40" r="7" fill="#a8d98a"/><circle cx="58" cy="38" r="1.7" fill="${INK}"/>
+    <rect x="13" y="45" width="10" height="10" rx="4" fill="#8fc974"/><rect x="40" y="45" width="10" height="10" rx="4" fill="#8fc974"/>
+    <path d="M7 46 C7 26 20 14 32 14 C44 14 57 26 57 46 Z" fill="#38d48f"/>
+    <rect x="7" y="44" width="50" height="6" rx="3" fill="#d8bf8f"/>
+    <path d="M32 14 V44 M19 24 L32 32 L45 24 M13 38 L32 32 L51 38" fill="none" stroke="#1a9a63" stroke-width="2" stroke-linejoin="round"/>`],
+  bear: ["Bear", `<circle cx="16" cy="20" r="8.5" fill="#a8795a"/><circle cx="48" cy="20" r="8.5" fill="#a8795a"/>
+    <circle cx="16" cy="20" r="4" fill="#7a5640"/><circle cx="48" cy="20" r="4" fill="#7a5640"/>
+    <circle cx="32" cy="37" r="20" fill="#a8795a"/>
+    <ellipse cx="32" cy="45" rx="10.5" ry="8" fill="#dcbc9c"/><ellipse cx="32" cy="41.5" rx="4.2" ry="3" fill="${INK}"/>
+    ${eyes(32, 9, 2.4)}<path d="M32 44.5 V47 M28 48 Q32 50.5 32 47 Q32 50.5 36 48" fill="none" stroke="${INK}" stroke-width="1.4" stroke-linecap="round"/>`],
+  panda: ["Panda", `<circle cx="16" cy="20" r="8.5" fill="${INK}"/><circle cx="48" cy="20" r="8.5" fill="${INK}"/>
+    <circle cx="32" cy="37" r="20" fill="#f6f6f8"/>
+    <ellipse cx="22.5" cy="35" rx="5.8" ry="7.8" transform="rotate(20 22.5 35)" fill="${INK}"/><ellipse cx="41.5" cy="35" rx="5.8" ry="7.8" transform="rotate(-20 41.5 35)" fill="${INK}"/>
+    <circle cx="23.5" cy="34" r="2" fill="#fff"/><circle cx="40.5" cy="34" r="2" fill="#fff"/>
+    <ellipse cx="32" cy="44" rx="3.8" ry="2.7" fill="${INK}"/>
+    <path d="M32 46.5 Q29 51 25.5 48.5 M32 46.5 Q35 51 38.5 48.5" fill="none" stroke="${INK}" stroke-width="1.6" stroke-linecap="round"/>`],
+  tiger: ["Tiger", `<circle cx="15" cy="20" r="7.5" fill="#ffa43a"/><circle cx="49" cy="20" r="7.5" fill="#ffa43a"/>
+    <circle cx="15" cy="20" r="3.5" fill="#4a2f1c"/><circle cx="49" cy="20" r="3.5" fill="#4a2f1c"/>
+    <ellipse cx="32" cy="37" rx="21" ry="19" fill="#ffa43a"/>
+    <g stroke="${INK}" stroke-width="2.6" stroke-linecap="round" fill="none"><path d="M32 19 V27 M24 20 L26.5 27 M40 20 L37.5 27 M11.5 33 L19 35.5 M12 41 L19 41 M52.5 33 L45 35.5 M52 41 L45 41"/></g>
+    <ellipse cx="26.5" cy="47" rx="7.5" ry="5.5" fill="#fff4ea"/><ellipse cx="37.5" cy="47" rx="7.5" ry="5.5" fill="#fff4ea"/>
+    <path d="M28.5 41 L35.5 41 L32 45 Z" fill="#e05a5a"/>${eyes(34, 9, 2.4)}`],
+  lion: ["Lion", `<g fill="#d98a1f">${mane}<circle cx="32" cy="33" r="22"/></g>
+    <circle cx="32" cy="36" r="15.5" fill="#f6cd78"/>
+    <ellipse cx="32" cy="44" rx="8" ry="5.5" fill="#fbe3b0"/><path d="M28.5 39.5 L35.5 39.5 L32 43.5 Z" fill="${INK}"/>
+    ${eyes(33, 7, 2.3)}<path d="M32 43.5 V46 M28.5 47 Q32 49.5 32 46 Q32 49.5 35.5 47" fill="none" stroke="${INK}" stroke-width="1.3" stroke-linecap="round"/>`],
+  jaguar: ["Jaguar", `<circle cx="15" cy="20" r="7.5" fill="#e8b24d"/><circle cx="49" cy="20" r="7.5" fill="#e8b24d"/>
+    <circle cx="15" cy="20" r="3.5" fill="${INK}"/><circle cx="49" cy="20" r="3.5" fill="${INK}"/>
+    <ellipse cx="32" cy="37" rx="21" ry="19" fill="#e8b24d"/>
+    <g fill="${INK}"><circle cx="24" cy="26" r="2.4"/><circle cx="32" cy="23.5" r="2.4"/><circle cx="40" cy="26" r="2.4"/><circle cx="16.5" cy="36" r="2.4"/><circle cx="47.5" cy="36" r="2.4"/><circle cx="19" cy="43" r="2.2"/><circle cx="45" cy="43" r="2.2"/></g>
+    <ellipse cx="26.5" cy="47" rx="7.5" ry="5.5" fill="#f8e7bd"/><ellipse cx="37.5" cy="47" rx="7.5" ry="5.5" fill="#f8e7bd"/>
+    <path d="M28.5 41 L35.5 41 L32 45 Z" fill="${INK}"/>${eyes(34, 9, 2.4)}`],
+  cat: ["Cat", `<path d="M13 28 L14 7 L29 19 Z M51 28 L50 7 L35 19 Z" fill="#f4d8a8"/>
+    <path d="M17 24 L17.5 12 L26 19 Z M47 24 L46.5 12 L38 19 Z" fill="#fa7272"/>
+    <ellipse cx="32" cy="39" rx="21" ry="17.5" fill="#f4d8a8"/>
+    <g stroke="#f6f6f8" stroke-width="1.6" stroke-linecap="round"><path d="M5 40 L19 43 M5 47 L19 46 M59 40 L45 43 M59 47 L45 46"/></g>
+    <ellipse cx="24" cy="36" rx="2.6" ry="3.2" fill="${INK}"/><ellipse cx="40" cy="36" rx="2.6" ry="3.2" fill="${INK}"/>
+    <circle cx="25" cy="35" r="1" fill="#fff"/><circle cx="41" cy="35" r="1" fill="#fff"/>
+    <path d="M29.5 43 L34.5 43 L32 46 Z" fill="#fa7272"/>
+    <path d="M32 46 V48.5 M28.5 49.5 Q32 52 32 48.5 Q32 52 35.5 49.5" fill="none" stroke="${INK}" stroke-width="1.4" stroke-linecap="round"/>`],
+};
+const IMGS = {};  // preloaded Image per animal, drawn on the canvas
+for (const id in ANIMALS) { const im = new Image(); im.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg(ANIMALS[id][1])); IMGS[id] = im; }
+
+// ---------- state ----------
+let ws = null, started = false, myId = null, myAnimal = "cat", mode = "udp", coin = null, serverMe = null, seenVia = null, lastOoo = 0;
+const me = {x: 400, y: 250}, others = {}, meta = {}, animals = {}, scores = {}, keys = new Set();
+const send = m => ws && ws.readyState === 1 && ws.send(JSON.stringify(m));
 $("nick").value = "player" + Math.floor(Math.random() * 900 + 100);
 
-const ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws");
-ws.onopen = () => send({t: "join", nick: $("nick").value});
-ws.onclose = () => log("tcp", "connection to bridge closed");
+function connect(nick, animal) {
+  ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws");
+  ws.onopen = () => send({t: "join", nick, animal});
+  ws.onclose = () => log("tcp", "connection to bridge closed");
+  ws.onmessage = onMessage;
+}
+
+// ---------- character picker ----------
+const grid = $("pickGrid");
+for (const id in ANIMALS) {
+  const b = document.createElement("button");
+  b.className = "opt"; b.dataset.a = id; b.setAttribute("role", "radio");
+  b.innerHTML = `<span>${svg(ANIMALS[id][1])}</span><span>${ANIMALS[id][0]}</span>`;  // trusted constants
+  b.onclick = () => choose(id);
+  grid.append(b);
+}
+function choose(id) {
+  myAnimal = id;
+  grid.querySelectorAll(".opt").forEach(b => b.setAttribute("aria-checked", b.dataset.a === id));
+}
+choose(myAnimal);
+$("startBtn").onclick = () => {
+  const nick = $("nick").value.trim() || "player";
+  $("picker").hidden = true;
+  if (!started) { started = true; $("startBtn").textContent = "Save"; connect(nick, myAnimal); }
+  else { animals[myId] = myAnimal; send({t: "animal", animal: myAnimal}); send({t: "nick", nick}); renderScores(); }
+};
+$("changeBtn").onclick = () => { $("picker").hidden = false; };
+addEventListener("keydown", e => { if (e.key === "Escape" && started) $("picker").hidden = true; });
 
 // ---------- log / chat helpers (textContent only, so chat text cannot inject HTML) ----------
 function log(proto, text) {
@@ -154,16 +292,16 @@ function chatLine(nick, text) {
 function renderScores() {
   const ul = $("score"); ul.innerHTML = "";
   Object.keys(meta).sort((a, b) => (scores[b] || 0) - (scores[a] || 0)).forEach(id => {
-    const li = document.createElement("li"), dot = document.createElement("span"), name = document.createElement("span"), n = document.createElement("span");
-    dot.className = "dot"; dot.style.background = col(+id);
+    const li = document.createElement("li"), av = document.createElement("span"), name = document.createElement("span"), n = document.createElement("span");
+    av.className = "av"; av.style.background = col(+id) + "33"; av.innerHTML = svg(ANIMALS[animals[id] || "cat"][1]);
     name.textContent = meta[id] + (+id === myId ? " (you)" : "");
     n.className = "n"; n.textContent = scores[id] || 0;
-    li.append(dot, name, n); ul.append(li);
+    li.append(av, name, n); ul.append(li);
   });
 }
 
 // ---------- messages from the bridge ----------
-ws.onmessage = ev => {
+function onMessage(ev) {
   const m = JSON.parse(ev.data);
   if (m.t === "world") {
     if (m.via !== seenVia) { seenVia = m.via; log(m.via, "world updates now arriving over " + m.via.toUpperCase()); }
@@ -179,7 +317,7 @@ ws.onmessage = ev => {
     myId = m.id; coin = m.coin; log("tcp", "welcome, you are #" + m.id);
   } else if (m.t === "lobby") {
     Object.keys(meta).forEach(k => delete meta[k]);
-    m.players.forEach(p => { meta[p.id] = p.nick; scores[p.id] = p.score; });
+    m.players.forEach(p => { meta[p.id] = p.nick; scores[p.id] = p.score; animals[p.id] = p.animal; });
     renderScores();
   } else if (m.t === "joined") log("tcp", m.nick + " joined");
   else if (m.t === "left") log("tcp", m.nick + " left");
@@ -188,7 +326,7 @@ ws.onmessage = ev => {
     coin = m.coin; Object.assign(scores, m.scores); renderScores();
     log("tcp", m.nick + " collected the coin");
   } else if (m.t === "stats") showStats(m);
-};
+}
 
 function showStats(s) {
   $("sMode").textContent = s.mode.toUpperCase(); $("sMode").className = s.mode;
@@ -215,12 +353,11 @@ function sendImpair() {
   send({t: "impair", loss: +$("loss").value, udp_delay: +$("udpd").value, tcp_delay: +$("tcpd").value});
 }
 ["loss", "udpd", "tcpd"].forEach(id => $(id).oninput = sendImpair);
-$("nick").onchange = () => send({t: "nick", nick: $("nick").value});
 $("chatIn").onkeydown = e => { if (e.key === "Enter" && e.target.value.trim()) { send({t: "chat", text: e.target.value}); e.target.value = ""; } };
 
 const KEYMAP = {ArrowLeft: "l", a: "l", ArrowRight: "r", d: "r", ArrowUp: "u", w: "u", ArrowDown: "d", s: "d"};
 addEventListener("keydown", e => {
-  if (e.target.tagName === "INPUT" || !(e.key in KEYMAP)) return;
+  if (e.target.tagName === "INPUT" || !$("picker").hidden || !(e.key in KEYMAP)) return;
   keys.add(KEYMAP[e.key]); e.preventDefault();
 });
 addEventListener("keyup", e => { if (e.key in KEYMAP) keys.delete(KEYMAP[e.key]); });
@@ -228,13 +365,33 @@ addEventListener("keyup", e => { if (e.key in KEYMAP) keys.delete(KEYMAP[e.key])
 // positions go to the server at 20 Hz; the bridge picks UDP or TCP from the mode
 setInterval(() => myId && send({t: "pos", x: me.x, y: me.y}), 50);
 
+// ---------- touch / mouse drag stick ----------
+// Touch and drag anywhere in the arena: the offset from where you first touched sets direction and speed.
+const stick = {x: 0, y: 0, on: false, sx: 0, sy: 0, ox: 0, oy: 0}, STICK_R = 48;  // STICK_R in screen px
+const scale = () => 800 / $("cv").getBoundingClientRect().width;  // screen px -> canvas units
+$("cv").addEventListener("pointerdown", e => {
+  e.target.setPointerCapture(e.pointerId);
+  const r = e.target.getBoundingClientRect();
+  Object.assign(stick, {on: true, sx: e.clientX, sy: e.clientY, ox: (e.clientX - r.left) * scale(), oy: (e.clientY - r.top) * scale()});
+});
+$("cv").addEventListener("pointermove", e => {
+  if (!stick.on) return;
+  const dx = e.clientX - stick.sx, dy = e.clientY - stick.sy, len = Math.hypot(dx, dy), k = Math.min(1, len / STICK_R);
+  stick.x = len ? dx / len * k : 0; stick.y = len ? dy / len * k : 0;
+});
+["pointerup", "pointercancel"].forEach(t => $("cv").addEventListener(t, () => { stick.on = false; stick.x = stick.y = 0; }));
+if (matchMedia("(pointer:coarse)").matches) document.querySelector("#arenaCard .hint").textContent = "Drag inside the arena to move. Dashed outline: where the server last saw you.";
+
 // ---------- canvas ----------
-const cv = $("cv"), g = cv.getContext("2d"), SIZE = 28, SPEED = 260;
+const cv = $("cv"), g = cv.getContext("2d"), SPEED = 260;
+const SIZE = matchMedia("(pointer:coarse)").matches ? 56 : 44;  // bigger on phones so characters stay readable
+const rr = (x, y, w, h, r) => g.roundRect ? g.roundRect(x, y, w, h, r) : g.rect(x, y, w, h);
 let prev = performance.now();
 function frame(now) {
   const dt = Math.min(0.05, (now - prev) / 1000); prev = now;
-  me.x += ((keys.has("r") ? 1 : 0) - (keys.has("l") ? 1 : 0)) * SPEED * dt;
-  me.y += ((keys.has("d") ? 1 : 0) - (keys.has("u") ? 1 : 0)) * SPEED * dt;
+  const ax = Math.max(-1, Math.min(1, (keys.has("r") ? 1 : 0) - (keys.has("l") ? 1 : 0) + stick.x));
+  const ay = Math.max(-1, Math.min(1, (keys.has("d") ? 1 : 0) - (keys.has("u") ? 1 : 0) + stick.y));
+  me.x += ax * SPEED * dt; me.y += ay * SPEED * dt;
   me.x = Math.max(0, Math.min(800, me.x)); me.y = Math.max(0, Math.min(500, me.y));
 
   g.clearRect(0, 0, 800, 500);
@@ -247,18 +404,32 @@ function frame(now) {
   }
   for (const id in others) {  // light smoothing so jitter and lag are visible but not painful
     const o = others[id]; o.x += (o.tx - o.x) * 0.35; o.y += (o.ty - o.y) * 0.35;
-    square(o.x, o.y, col(+id), meta[id]);
+    character(o.x, o.y, +id, false);
   }
   if (serverMe) {  // where the server thinks we are
-    g.setLineDash([4, 4]); g.strokeStyle = "rgba(255,255,255,.6)"; g.strokeRect(serverMe.x - SIZE / 2, serverMe.y - SIZE / 2, SIZE, SIZE); g.setLineDash([]);
+    g.setLineDash([4, 4]); g.strokeStyle = "rgba(255,255,255,.6)"; g.beginPath(); rr(serverMe.x - SIZE / 2, serverMe.y - SIZE / 2, SIZE, SIZE, 12); g.stroke(); g.setLineDash([]);
   }
-  if (myId) { square(me.x, me.y, col(myId), meta[myId]); g.strokeStyle = "#fff"; g.lineWidth = 2; g.beginPath(); g.roundRect(me.x - SIZE / 2, me.y - SIZE / 2, SIZE, SIZE, 7); g.stroke(); g.lineWidth = 1; }
+  if (myId) character(me.x, me.y, myId, true);
+  if (stick.on) {
+    const R = STICK_R * scale();
+    g.strokeStyle = "rgba(255,255,255,.35)"; g.lineWidth = 2; g.beginPath(); g.arc(stick.ox, stick.oy, R, 0, 7); g.stroke(); g.lineWidth = 1;
+    g.fillStyle = "rgba(255,255,255,.55)"; g.beginPath(); g.arc(stick.ox + stick.x * R, stick.oy + stick.y * R, R * 0.4, 0, 7); g.fill();
+  }
   requestAnimationFrame(frame);
 }
-function square(x, y, color, name) {
-  g.fillStyle = color; g.beginPath(); g.roundRect(x - SIZE / 2, y - SIZE / 2, SIZE, SIZE, 7); g.fill();
-  g.fillStyle = "rgba(255,255,255,.8)"; g.font = "11px system-ui"; g.textAlign = "center";
-  g.fillText(name || "", x, y - SIZE / 2 - 6);
+// A character = coloured glow on the "floor" + the animal icon + name. Own character also gets a white ring on the floor.
+function character(x, y, id, self) {
+  const c = col(id), gy = y + SIZE * 0.4;
+  g.save(); g.translate(x, gy); g.scale(1, 0.36);
+  const gr = g.createRadialGradient(0, 0, 0, 0, 0, SIZE * 0.8);
+  gr.addColorStop(0, c + "cc"); gr.addColorStop(1, c + "00");
+  g.fillStyle = gr; g.beginPath(); g.arc(0, 0, SIZE * 0.8, 0, 7); g.fill(); g.restore();
+  if (self) { g.strokeStyle = "#fff"; g.lineWidth = 2; g.beginPath(); g.ellipse(x, gy, SIZE * 0.46, SIZE * 0.16, 0, 0, 7); g.stroke(); g.lineWidth = 1; }
+  const im = IMGS[(self ? myAnimal : animals[id]) || "cat"];
+  if (im.complete && im.naturalWidth) g.drawImage(im, x - SIZE / 2, y - SIZE / 2, SIZE, SIZE);
+  else { g.fillStyle = c; g.beginPath(); rr(x - SIZE / 2, y - SIZE / 2, SIZE, SIZE, 10); g.fill(); }
+  g.fillStyle = "rgba(255,255,255,.85)"; g.font = "11px system-ui"; g.textAlign = "center";
+  g.fillText(meta[id] || "", x, y - SIZE / 2 - 4);
 }
 requestAnimationFrame(frame);
 </script>

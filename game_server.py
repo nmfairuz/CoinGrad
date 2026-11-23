@@ -1,5 +1,4 @@
 """Raw-socket game server. TCP = reliable events, UDP = fast positions. Server-authoritative."""
-
 import json
 import os
 import random
@@ -12,10 +11,11 @@ TCP_PORT = int(os.environ.get("GAME_TCP_PORT", 9000))
 UDP_PORT = int(os.environ.get("GAME_UDP_PORT", 9001))
 W, H = 800, 500
 TICK_HZ = 20
-HIT_DIST = 25  # player-center to coin-center distance that counts as a grab
+HIT_DIST = 34  # player-center to coin-center distance that counts as a grab
+ANIMALS = {"fox", "wolf", "raccoon", "deer", "penguin", "rabbit", "tortoise", "bear", "panda", "tiger", "lion", "jaguar", "cat"}
 
 lock = threading.Lock()
-players = {}  # id -> player dict
+players = {}          # id -> player dict
 coin = {"x": 400, "y": 250}
 next_id = 1
 udp_sock = None
@@ -28,9 +28,7 @@ def enc(msg):
 def send_tcp(p, msg):
     try:
         with p["send_lock"]:
-            p["conn"].sendall(
-                enc(msg) + b"\n"
-            )  # "\n" is our message delimiter (framing)
+            p["conn"].sendall(enc(msg) + b"\n")  # "\n" is our message delimiter (framing)
     except OSError:
         pass
 
@@ -44,13 +42,8 @@ def broadcast_tcp(msg):
 
 def lobby_msg():
     with lock:
-        return {
-            "t": "lobby",
-            "players": [
-                {"id": p["id"], "nick": p["nick"], "score": p["score"]}
-                for p in players.values()
-            ],
-        }
+        return {"t": "lobby", "players": [
+            {"id": p["id"], "nick": p["nick"], "score": p["score"], "animal": p["animal"]} for p in players.values()]}
 
 
 def spawn_coin():
@@ -67,16 +60,11 @@ def apply_position(p, x, y):
     hit = None
     with lock:
         p["x"], p["y"] = x, y
-        if (x - coin["x"]) ** 2 + (y - coin["y"]) ** 2 <= HIT_DIST**2:
+        if (x - coin["x"]) ** 2 + (y - coin["y"]) ** 2 <= HIT_DIST ** 2:
             p["score"] += 1
             spawn_coin()
-            hit = {
-                "t": "coin_collected",
-                "id": p["id"],
-                "nick": p["nick"],
-                "coin": dict(coin),
-                "scores": {str(q["id"]): q["score"] for q in players.values()},
-            }
+            hit = {"t": "coin_collected", "id": p["id"], "nick": p["nick"], "coin": dict(coin),
+                   "scores": {str(q["id"]): q["score"] for q in players.values()}}
     if hit:
         broadcast_tcp(hit)
 
@@ -85,20 +73,10 @@ def register(conn, msg):
     global next_id
     with lock:
         pid, next_id = next_id, next_id + 1
-        p = {
-            "id": pid,
-            "nick": str(msg.get("nick") or f"player{pid}")[:16],
-            "score": 0,
-            "x": W / 2,
-            "y": H / 2,
-            "conn": conn,
-            "send_lock": threading.Lock(),
-            "udp_addr": None,
-            "last_seq": 0,
-            "mode": "udp",
-            "udp_out": 0,
-            "tcp_out": 0,
-        }
+        animal = msg.get("animal") if msg.get("animal") in ANIMALS else "cat"
+        p = {"id": pid, "nick": str(msg.get("nick") or f"player{pid}")[:16], "score": 0, "animal": animal,
+             "x": W / 2, "y": H / 2, "conn": conn, "send_lock": threading.Lock(),
+             "udp_addr": None, "last_seq": 0, "mode": "udp", "udp_out": 0, "tcp_out": 0}
         players[pid] = p
     send_tcp(p, {"t": "welcome", "id": pid, "arena": [W, H], "coin": dict(coin)})
     broadcast_tcp({"t": "joined", "id": pid, "nick": p["nick"]})
@@ -119,22 +97,16 @@ def on_tcp_message(p, msg):
     if t == "ping":
         send_tcp(p, {"t": "pong", "ts": msg.get("ts")})  # client measures TCP RTT
     elif t == "chat":
-        broadcast_tcp(
-            {
-                "t": "chat",
-                "id": p["id"],
-                "nick": p["nick"],
-                "text": str(msg.get("text", ""))[:200],
-            }
-        )
+        broadcast_tcp({"t": "chat", "id": p["id"], "nick": p["nick"], "text": str(msg.get("text", ""))[:200]})
     elif t == "nick":
         p["nick"] = str(msg.get("nick", p["nick"]))[:16]
         broadcast_tcp(lobby_msg())
+    elif t == "animal" and msg.get("animal") in ANIMALS:
+        p["animal"] = msg["animal"]
+        broadcast_tcp(lobby_msg())
     elif t == "mode" and msg.get("mode") in ("udp", "tcp"):
         p["mode"] = msg["mode"]
-    elif (
-        t == "pos"
-    ):  # accepted in any mode; "mode" only picks how the world is sent back
+    elif t == "pos":  # accepted in any mode; "mode" only picks how the world is sent back
         apply_position(p, msg.get("x"), msg.get("y"))
     elif t == "leave":
         return False
@@ -200,19 +172,14 @@ def tick_loop():
     nxt = time.time()
     while True:
         with lock:
-            snap = [
-                {"id": p["id"], "x": round(p["x"], 1), "y": round(p["y"], 1)}
-                for p in players.values()
-            ]
+            snap = [{"id": p["id"], "x": round(p["x"], 1), "y": round(p["y"], 1)} for p in players.values()]
             targets = list(players.values())
             c = dict(coin)
         for p in targets:
             msg = {"t": "world", "ts": time.time(), "players": snap, "coin": c}
             if p["mode"] == "udp":
                 if p["udp_addr"]:
-                    p[
-                        "udp_out"
-                    ] += 1  # per-recipient sequence: lets the receiver detect loss/reorder
+                    p["udp_out"] += 1  # per-recipient sequence: lets the receiver detect loss/reorder
                     msg["seq"] = p["udp_out"]
                     udp_sock.sendto(enc(msg), p["udp_addr"])
             else:

@@ -170,7 +170,9 @@ class Bridge:
     def from_browser(self, m):
         t = m.get("t")
         if t == "join":
-            self.tcp_send({"t": "join", "nick": str(m.get("nick", ""))[:16]})
+            self.tcp_send({"t": "join", "nick": str(m.get("nick", ""))[:16], "animal": str(m.get("animal", ""))[:12]})
+        elif t == "animal":
+            self.tcp_send({"t": "animal", "animal": str(m.get("animal", ""))[:12]})
         elif t == "nick":
             self.tcp_send({"t": "nick", "nick": str(m.get("nick", ""))[:16]})
         elif t == "chat":
